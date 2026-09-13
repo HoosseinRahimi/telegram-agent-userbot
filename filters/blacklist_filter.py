@@ -1,0 +1,52 @@
+"""
+Blacklist Filter.
+
+Blocks users, channels, or chats configured in the userbot's blacklist.
+Supports matching by numeric user ID or username (case-insensitive).
+"""
+
+from __future__ import annotations
+
+from typing import Any, Iterable, Optional, Set, Union
+from .base import BaseFilter, FilterContext, FilterResult
+
+
+class BlacklistFilter(BaseFilter):
+    """
+    Blocks senders whose ID or username appears in the blacklist.
+    """
+
+    def __init__(self, blacklist: Optional[Iterable[Union[int, str]]] = None) -> None:
+        self.blacklisted_ids: Set[Union[int, str]] = set()
+        self.blacklisted_usernames: Set[str] = set()
+
+        if blacklist:
+            for item in blacklist:
+                if item is None:
+                    continue
+                s_item = str(item).strip()
+                if not s_item:
+                    continue
+                if s_item.lstrip("-").isdigit():
+                    self.blacklisted_ids.add(int(s_item))
+                    self.blacklisted_ids.add(s_item)
+                else:
+                    self.blacklisted_usernames.add(s_item.lower().lstrip("@"))
+
+    async def check(self, context: FilterContext) -> FilterResult:
+        # Check numeric ID
+        sender_id = context.sender_id
+        if sender_id in self.blacklisted_ids or str(sender_id) in self.blacklisted_ids:
+            return FilterResult.block(
+                reason=f"Blocked sender ID {sender_id} matching blacklist."
+            )
+
+        # Check username
+        if context.sender_username:
+            uname = context.sender_username.lower().lstrip("@")
+            if uname in self.blacklisted_usernames:
+                return FilterResult.block(
+                    reason=f"Blocked username @{uname} matching blacklist."
+                )
+
+        return FilterResult.allow()

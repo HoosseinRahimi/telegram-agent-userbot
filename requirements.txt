@@ -1,0 +1,19 @@
+# =====================================================================
+# Telegram AI Agent Userbot Dependencies
+# =====================================================================
+
+# Core Telegram MTProto Client
+telethon>=1.36.0,<2.0.0
+
+# Configuration & Environment Management
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# Modular LLM Provider SDKs
+google-genai>=0.1.1
+openai>=1.0.0
+
+# Offline Testing & Verification Framework
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
