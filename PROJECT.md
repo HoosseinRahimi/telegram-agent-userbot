@@ -1,5 +1,5 @@
 # Project: Telegram AI Agent Userbot
-# Working Directory: C:\Users\Hossein\.gemini\antigravity\scratch\telegram_agent_userbot
+# Working Directory: telegram-agent-userbot
 
 ## Architecture
 Modular Python architecture built upon Telethon (MTProto), Google Gemini / OpenAI (via modular LLM engine), and Pytest offline mocking:
@@ -190,5 +190,5 @@ async def simulate_human_typing(client: Any, chat_id: Any, duration: float) -> N
 ---
 
 ## Code Layout
-Defined under `C:\Users\Hossein\.gemini\antigravity\scratch\telegram_agent_userbot`.
+Defined under the repository root `telegram-agent-userbot`.
 All implementation files reside in their designated package directories. No source code or tests may be written into `.agents/`.

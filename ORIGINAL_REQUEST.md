@@ -4,7 +4,7 @@
 
 پیادهسازی یک تلگرام یوزربات (Telegram Userbot) هوشمند و ماژولار بر پایه پروتکل MTProto (کتابخانه Telethon) متصل به مدلهای زبانی (LLM) جهت مانیتورینگ/خلاصهسازی دورهای و دستوری کانالها و پاسخگویی خودکار به پیامهای خصوصی با رفتارهای شبیهسازیشده انسانی و لایههای امنیتی ضد بن.
 
-Working directory: C:\Users\Hossein\.gemini\antigravity\scratch\telegram_agent_userbot
+Working directory: telegram-agent-userbot
 Integrity mode: development
 
 ## Requirements
