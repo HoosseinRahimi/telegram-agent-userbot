@@ -11,7 +11,6 @@ Simulates complete user journeys:
 from __future__ import annotations
 
 import asyncio
-import pytest
 
 from client.telethon_client import UserbotClient
 from config.settings import Settings

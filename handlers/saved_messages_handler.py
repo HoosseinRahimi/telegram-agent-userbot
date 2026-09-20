@@ -16,7 +16,7 @@ to Saved Messages:
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 from config.settings import Settings
 from filters.blacklist_filter import BlacklistFilter
@@ -24,11 +24,12 @@ from filters.pipeline import FilterPipeline
 from llm.factory import create_llm_provider
 from services.auto_reply_service import AutoReplyService
 from services.digest_service import DigestService
+from services.state_repository import StateRepository, normalize_entry
 
 logger = logging.getLogger(__name__)
 
 
-def parse_summary_args(text: str) -> tuple[Optional[str], int, Optional[str]]:
+def parse_summary_args(text: str) -> tuple[str | None, int, str | None]:
     """
     Parses command arguments from: /summary <target> [limit] [topic...]
     Returns (target, limit, topic).
@@ -55,8 +56,9 @@ def register_saved_messages_handler(
     client: Any,
     digest_service: DigestService,
     settings: Settings,
-    auto_reply_service: Optional[AutoReplyService] = None,
-    filter_pipeline: Optional[FilterPipeline] = None,
+    auto_reply_service: AutoReplyService | None = None,
+    filter_pipeline: FilterPipeline | None = None,
+    state_repo: StateRepository | None = None,
 ) -> None:
     """
     Registers a Telethon NewMessage listener restricted to 'me' (Saved Messages).
@@ -147,6 +149,8 @@ def register_saved_messages_handler(
                 minutes = int(parts[1])
 
             msg = auto_reply_service.pause(minutes)
+            if state_repo:
+                state_repo.set_paused(True, auto_reply_service.paused_until)
             await client.send_message("me", msg)
 
         # 4. /resume
@@ -156,9 +160,11 @@ def register_saved_messages_handler(
                 return
 
             msg = auto_reply_service.resume()
+            if state_repo:
+                state_repo.set_paused(False)
             await client.send_message("me", msg)
 
-        # 5. /mode
+        # 5. /mode (Atomic switch with candidate health check)
         elif cmd in ("/mode", "/مدل"):
             if len(parts) < 2:
                 current = settings.llm_provider
@@ -177,19 +183,41 @@ def register_saved_messages_handler(
                 )
                 return
 
+            # Test candidate provider before committing change
             try:
+                temp_settings = settings.model_copy(update={"llm_provider": new_mode})
+                candidate_provider = create_llm_provider(temp_settings)
+
+                # Lightweight health check
+                is_healthy = await candidate_provider.check_health()
+                if not is_healthy:
+                    await client.send_message(
+                        "me",
+                        f"⚠️ آزمون اتصال موتور `{new_mode.upper()}` با شکست مواجه شد.\n"
+                        f"تغییر اعمال نگردید و موتور فعلی (`{settings.llm_provider.upper()}`) بدون اختلال فعال باقی ماند.",
+                    )
+                    return
+
+                # Atomic swap only after verified health
                 settings.llm_provider = new_mode
-                new_provider = create_llm_provider(settings)
                 if auto_reply_service:
-                    auto_reply_service.llm = new_provider
-                digest_service.llm = new_provider
+                    auto_reply_service.llm = candidate_provider
+                digest_service.llm = candidate_provider
+
+                if state_repo:
+                    state_repo.set_llm_provider(new_mode)
+
                 await client.send_message(
                     "me",
-                    f"🧠 موتور هوش مصنوعی با موفقیت به `{new_mode.upper()}` تغییر یافت.",
+                    f"🧠 موتور هوش مصنوعی با موفقیت به `{new_mode.upper()}` تغییر یافت و تایید شد.",
                 )
             except Exception as exc:
                 logger.error(f"[SavedMessagesHandler] Error switching LLM mode: {exc}")
-                await client.send_message("me", f"❌ خطا در تغییر موتور هوش مصنوعی: {exc}")
+                await client.send_message(
+                    "me",
+                    f"❌ خطا در فعال‌سازی موتور جدید: {exc}\n"
+                    f"موتور فعلی (`{settings.llm_provider.upper()}`) بدون تغییر فعال باقی ماند.",
+                )
 
         # 6. /blacklist
         elif cmd in ("/blacklist", "/بلاک"):
@@ -204,9 +232,10 @@ def register_saved_messages_handler(
 
             action = parts[1].lower()
             target_entry = parts[2].strip()
+            norm_entry = normalize_entry(target_entry)
 
             # Find BlacklistFilter in pipeline
-            bl_filter: Optional[BlacklistFilter] = None
+            bl_filter: BlacklistFilter | None = None
             if filter_pipeline:
                 for flt in filter_pipeline.filters:
                     if isinstance(flt, BlacklistFilter):
@@ -215,11 +244,16 @@ def register_saved_messages_handler(
 
             if action == "add":
                 if bl_filter:
-                    added_repr = bl_filter.add_entry(target_entry)
+                    added_repr = bl_filter.add_entry(norm_entry)
                 else:
-                    added_repr = target_entry
-                if target_entry not in settings.blacklist_users:
-                    settings.blacklist_users.append(target_entry)
+                    added_repr = norm_entry
+
+                if norm_entry not in settings.blacklist_users:
+                    settings.blacklist_users.append(norm_entry)
+
+                if state_repo:
+                    state_repo.add_to_blacklist(norm_entry)
+
                 await client.send_message(
                     "me",
                     f"🚫 شناسه/کاربر `{added_repr}` با موفقیت به لیست سیاه اضافه شد.",
@@ -227,10 +261,13 @@ def register_saved_messages_handler(
             elif action == "remove":
                 removed = False
                 if bl_filter:
-                    removed = bl_filter.remove_entry(target_entry)
-                if target_entry in settings.blacklist_users:
-                    settings.blacklist_users.remove(target_entry)
+                    removed = bl_filter.remove_entry(norm_entry)
+                if norm_entry in settings.blacklist_users:
+                    settings.blacklist_users.remove(norm_entry)
                     removed = True
+                if state_repo:
+                    removed = state_repo.remove_from_blacklist(norm_entry) or removed
+
                 if removed:
                     await client.send_message(
                         "me",
@@ -252,16 +289,30 @@ def register_saved_messages_handler(
                 else:
                     pause_status = "⏸️ متوقف (تا دستور بعدی)"
 
+            # Check LLM health
+            provider = auto_reply_service.llm if auto_reply_service else digest_service.llm
+            provider_health = "🟢 سالم" if await provider.check_health() else "🔴 خطا یا غیرفعال"
+
+            is_connected = getattr(client, "is_connected", True)
+            if callable(is_connected):
+                is_connected = is_connected()
+            conn_status = "🟢 آنلاین و متصل" if is_connected else "🔴 قطع ارتباط"
+
+            allowlist_repr = f"`{len(settings.allowlist_users)}` کاربر (محدود به مجاز)" if settings.allowlist_users else "غیرفعال (آزاد برای همه)"
+            dry_run_repr = "⚠️ فعال (بدون ارسال پیام)" if settings.dry_run else "غیرفعال (عادی)"
+
             status_text = (
                 "🤖 **وضعیت یوزربات تلگرام (Userbot Status)**\n"
                 "━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🟢 **وضعیت اتصال:** آنلاین و آماده\n"
+                f"📡 **وضعیت اتصال تلگرام:** {conn_status}\n"
                 f"💬 **پاسخ‌دهی خودکار (Auto-Reply):** {pause_status}\n"
-                f"🧠 **موتور هوش مصنوعی:** `{settings.llm_provider.upper()}`\n"
+                f"🧪 **حالت آزمایشی (Dry Run):** {dry_run_repr}\n"
+                f"🧠 **موتور هوش مصنوعی:** `{settings.llm_provider.upper()}` ({provider_health})\n"
+                f"👥 **لیست سفید (Allowlist):** {allowlist_repr}\n"
+                f"🚫 **لیست سیاه (Blacklist):** `{len(settings.blacklist_users)}` شناسه/کاربر\n"
                 f"🎯 **کانال‌های دایجست:** `{channels_repr}`\n"
                 f"⏱️ **بازه خلاصه‌سازی خودکار:** `{settings.digest_interval_minutes}` دقیقه\n"
-                f"🚫 **تعداد لیست سیاه:** `{len(settings.blacklist_users)}` شناسه/کاربر\n"
-                f"🛡️ **لایه‌های امنیتی:** FloodWait Backoff + ChatDebouncer + Active Cooldown"
+                f"🛡️ **لایه‌های امنیتی:** Rate-Limit Resilience + Debouncer + Active Cooldown + PII Redaction"
             )
             await client.send_message("me", status_text)
 

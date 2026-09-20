@@ -7,7 +7,8 @@ Supports matching by numeric user ID or username (case-insensitive).
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional, Set, Union
+from collections.abc import Iterable
+
 from .base import BaseFilter, FilterContext, FilterResult
 
 
@@ -16,9 +17,9 @@ class BlacklistFilter(BaseFilter):
     Blocks senders whose ID or username appears in the blacklist.
     """
 
-    def __init__(self, blacklist: Optional[Iterable[Union[int, str]]] = None) -> None:
-        self.blacklisted_ids: Set[Union[int, str]] = set()
-        self.blacklisted_usernames: Set[str] = set()
+    def __init__(self, blacklist: Iterable[int | str] | None = None) -> None:
+        self.blacklisted_ids: set[int | str] = set()
+        self.blacklisted_usernames: set[str] = set()
 
         if blacklist:
             for item in blacklist:
@@ -51,7 +52,7 @@ class BlacklistFilter(BaseFilter):
 
         return FilterResult.allow()
 
-    def add_entry(self, item: Union[int, str]) -> str:
+    def add_entry(self, item: int | str) -> str:
         """Dynamically adds an ID or username to the blacklist."""
         s_item = str(item).strip()
         if not s_item:
@@ -65,7 +66,7 @@ class BlacklistFilter(BaseFilter):
             self.blacklisted_usernames.add(uname)
             return f"@{uname}"
 
-    def remove_entry(self, item: Union[int, str]) -> bool:
+    def remove_entry(self, item: int | str) -> bool:
         """Dynamically removes an ID or username from the blacklist."""
         s_item = str(item).strip()
         removed = False

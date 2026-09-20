@@ -14,15 +14,12 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional
-import pytest
 
 from client.telethon_client import UserbotClient
 from config.settings import Settings
 from filters.base import FilterContext
-from filters.blacklist_filter import BlacklistFilter
-from filters.pipeline import FilterPipeline, build_default_pipeline
-from filters.sensitive_filter import SensitiveFilter, normalize_text
+from filters.pipeline import build_default_pipeline
+from filters.sensitive_filter import SensitiveFilter
 from handlers.saved_messages_handler import register_saved_messages_handler
 from llm.mock_provider import MockLLMProvider
 from services.alert_service import AlertService
@@ -30,7 +27,7 @@ from services.auto_reply_service import AutoReplyService
 from services.chat_debouncer import ChatDebouncer
 from services.digest_service import DigestService
 from services.humanizer import HumanizerService
-from tests.conftest import MockMessage, MockTelethonClient, MockUser
+from tests.conftest import MockMessage, MockTelethonClient
 
 
 def asyncio_run(coro):
@@ -78,9 +75,9 @@ def test_sensitive_filter_harakat_diacritics_stripping() -> None:
 
 async def test_chat_debouncer_aggregates_rapid_messages(fast_sleep) -> None:
     """Verifies that multiple messages sent within debounce window are merged into one."""
-    dispatched_batches: List[tuple[FilterContext, Optional[int]]] = []
+    dispatched_batches: list[tuple[FilterContext, int | None]] = []
 
-    async def mock_dispatch(ctx: FilterContext, msg_id: Optional[int]) -> None:
+    async def mock_dispatch(ctx: FilterContext, msg_id: int | None) -> None:
         dispatched_batches.append((ctx, msg_id))
 
     debouncer = ChatDebouncer(

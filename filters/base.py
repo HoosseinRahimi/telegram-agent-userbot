@@ -5,17 +5,17 @@ Base abstractions and data structures for message filtering pipeline.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Optional, Union
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class FilterResult:
     """Outcome produced by a filter check."""
     allowed: bool
-    reason: Optional[str] = None
+    reason: str | None = None
     is_security_alert: bool = False
-    matched_keyword: Optional[str] = None
+    matched_keyword: str | None = None
 
     @classmethod
     def allow(cls) -> FilterResult:
@@ -26,7 +26,7 @@ class FilterResult:
         cls,
         reason: str,
         is_security_alert: bool = False,
-        matched_keyword: Optional[str] = None,
+        matched_keyword: str | None = None,
     ) -> FilterResult:
         return cls(
             allowed=False,
@@ -39,14 +39,14 @@ class FilterResult:
 @dataclass
 class FilterContext:
     """Context information about an incoming message evaluated by filters."""
-    sender_id: Union[int, str]
-    sender_username: Optional[str] = None
+    sender_id: int | str
+    sender_username: str | None = None
     is_bot: bool = False
     is_self: bool = False
     text: str = ""
-    chat_id: Union[int, str] = 0
-    raw_event: Optional[Any] = None
-    quoted_text: Optional[str] = None
+    chat_id: int | str = 0
+    raw_event: Any | None = None
+    quoted_text: str | None = None
 
 
 class BaseFilter(ABC):

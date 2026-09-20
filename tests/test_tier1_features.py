@@ -5,7 +5,6 @@ Verifies all 9 core features with >=5 discrete test cases per feature.
 
 from __future__ import annotations
 
-import asyncio
 import pytest
 
 from client.anti_ban import (
@@ -19,26 +18,20 @@ from config.settings import Settings, _parse_list_or_json
 from filters.base import FilterContext
 from filters.blacklist_filter import BlacklistFilter
 from filters.bot_filter import BotFilter
-from filters.pipeline import FilterPipeline, build_default_pipeline
+from filters.pipeline import FilterPipeline
 from filters.sensitive_filter import SensitiveFilter
 from filters.system_filter import SystemFilter
 from handlers.saved_messages_handler import parse_summary_args
 from llm.base import (
-    LLMAuthenticationError,
-    LLMError,
-    LLMMessage,
     LLMRateLimitError,
     LLMRequest,
-    LLMResponse,
 )
 from llm.factory import create_llm_provider
 from llm.mock_provider import MockLLMProvider
-from scheduler.digest_scheduler import DigestScheduler
 from services.alert_service import AlertService
-from services.digest_service import DigestService, split_text_chunks
+from services.digest_service import split_text_chunks
 from services.humanizer import HumanizerService
-from tests.conftest import MockFloodWaitError, MockTelethonClient, MockUser
-
+from tests.conftest import MockFloodWaitError
 
 # ============================================================================
 # F01 & F02: Configuration & Credentials Validation

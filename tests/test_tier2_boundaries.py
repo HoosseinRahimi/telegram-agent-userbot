@@ -7,8 +7,6 @@ boundary values, and zero/negative parameters.
 
 from __future__ import annotations
 
-import pytest
-
 from client.anti_ban import calculate_reading_delay, calculate_typing_duration
 from filters.base import FilterContext
 from filters.blacklist_filter import BlacklistFilter

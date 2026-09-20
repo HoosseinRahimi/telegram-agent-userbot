@@ -14,7 +14,8 @@ import asyncio
 import functools
 import logging
 import random
-from typing import Any, Callable, Coroutine, Optional, TypeVar
+from collections.abc import Callable, Coroutine
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ def with_floodwait(
     max_retries: int = 3,
     max_wait_seconds: int = 300,
     jitter_range: tuple[float, float] = (0.5, 2.0),
-    sleep_func: Optional[Callable[[float], Coroutine[Any, Any, None]]] = None,
+    sleep_func: Callable[[float], Coroutine[Any, Any, None]] | None = None,
 ) -> Callable[[Callable[..., Coroutine[Any, Any, T]]], Callable[..., Coroutine[Any, Any, T]]]:
     """
     Decorator that intercepts Telegram FloodWaitError and dynamically pauses
@@ -93,7 +94,7 @@ def with_floodwait(
 async def safe_delay(
     min_seconds: float = 1.0,
     max_seconds: float = 3.0,
-    sleep_func: Optional[Callable[[float], Coroutine[Any, Any, None]]] = None,
+    sleep_func: Callable[[float], Coroutine[Any, Any, None]] | None = None,
 ) -> float:
     """
     Introduces a random delay to prevent repetitive machine-like timing patterns.

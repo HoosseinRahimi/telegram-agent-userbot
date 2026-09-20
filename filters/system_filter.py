@@ -7,10 +7,9 @@ to prevent accidental loops or replying to Telegram service notifications.
 
 from __future__ import annotations
 
-from typing import Union
 from .base import BaseFilter, FilterContext, FilterResult
 
-TELEGRAM_SERVICE_IDS: set[Union[int, str]] = {777000, "777000", 42777, "42777"}
+TELEGRAM_SERVICE_IDS: set[int | str] = {777000, "777000", 42777, "42777"}
 TELEGRAM_SERVICE_USERNAMES: set[str] = {"telegram", "telegramnotifications", "service_notifications"}
 
 

@@ -7,9 +7,10 @@ Instantiates and configures the active LLM provider based on application setting
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Optional, Type
+from collections.abc import Callable
 
 from config.settings import Settings
+
 from .base import BaseLLMProvider
 from .gemini_provider import GeminiProvider
 from .mock_provider import MockLLMProvider
@@ -18,7 +19,7 @@ from .openai_provider import OpenAIProvider
 logger = logging.getLogger(__name__)
 
 # Registry mapping provider keys to factory constructors
-PROVIDER_REGISTRY: Dict[str, Callable[[Settings], BaseLLMProvider]] = {}
+PROVIDER_REGISTRY: dict[str, Callable[[Settings], BaseLLMProvider]] = {}
 
 
 def register_provider(

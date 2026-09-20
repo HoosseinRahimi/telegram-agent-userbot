@@ -29,3 +29,7 @@ Thumbs.db
 # Agent scratch & internal logs
 .agents/
 *.log
+
+# Runtime data & state persistence
+data/
+*.state.json

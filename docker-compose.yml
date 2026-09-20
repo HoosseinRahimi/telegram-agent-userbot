@@ -7,10 +7,12 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - TELEGRAM_SESSION_NAME=/data/userbot_session
     volumes:
-      # Persist SQLite session file and persona prompt across container restarts
-      - ./userbot_session.session:/app/userbot_session.session
-      - ./persona_prompt.txt:/app/persona_prompt.txt
+      # Mount directory for SQLite session, runtime state, and logs (prevents file-as-dir bug)
+      - ./data:/data
+      - ./persona_prompt.txt:/app/persona_prompt.txt:ro
     logging:
       driver: "json-file"
       options:

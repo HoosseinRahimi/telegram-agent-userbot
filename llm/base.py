@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
-
+from typing import Any
 
 # ============================================================================
 # Exception Hierarchy
@@ -55,7 +54,7 @@ class LLMMessage:
     role: str  # "system", "user", "assistant" (or "model")
     content: str
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return {"role": self.role, "content": self.content}
 
 
@@ -65,17 +64,17 @@ class LLMRequest:
     Input request payload for LLM generation.
     Supports either a list of LLMMessage objects or direct prompt/system_prompt parameters.
     """
-    messages: List[LLMMessage] = field(default_factory=list)
+    messages: list[LLMMessage] = field(default_factory=list)
     temperature: float = 0.7
     max_tokens: int = 1024
-    prompt: Optional[str] = None
-    system_prompt: Optional[str] = None
-    extra_params: Dict[str, Any] = field(default_factory=dict)
+    prompt: str | None = None
+    system_prompt: str | None = None
+    extra_params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # If messages not supplied but prompt was provided, construct messages list
         if not self.messages and self.prompt is not None:
-            constructed: List[LLMMessage] = []
+            constructed: list[LLMMessage] = []
             if self.system_prompt:
                 constructed.append(LLMMessage(role="system", content=self.system_prompt))
             constructed.append(LLMMessage(role="user", content=self.prompt))
@@ -105,10 +104,10 @@ class LLMResponse:
     """
     content: str
     model: str
-    tokens_used: Optional[int] = None
-    finish_reason: Optional[str] = "stop"
-    usage: Optional[Dict[str, int]] = None
-    raw_response: Optional[Any] = None
+    tokens_used: int | None = None
+    finish_reason: str | None = "stop"
+    usage: dict[str, int] | None = None
+    raw_response: Any | None = None
 
     def __post_init__(self) -> None:
         if self.tokens_used is not None and self.usage is None:
@@ -158,8 +157,8 @@ class BaseLLMProvider(ABC):
     async def generate_response(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        history: Optional[List[Union[LLMMessage, Dict[str, str]]]] = None,
+        system_prompt: str | None = None,
+        history: list[LLMMessage | dict[str, str]] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 1024,
     ) -> str:
@@ -167,7 +166,7 @@ class BaseLLMProvider(ABC):
         Convenience wrapper method that accepts primitive prompt/history strings
         and returns the generated text directly.
         """
-        messages: List[LLMMessage] = []
+        messages: list[LLMMessage] = []
         if system_prompt:
             messages.append(LLMMessage(role="system", content=system_prompt))
         if history:

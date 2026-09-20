@@ -1,44 +1,52 @@
-# E2E Test Infra: Telegram AI Agent Userbot
+# E2E Test Infrastructure: Telegram AI Agent Userbot
 
 ## Test Philosophy
-- **Opaque-box & Requirement-driven**: Derived directly from `ORIGINAL_REQUEST.md` (R1 through R6).
-- **100% Offline**: Zero reliance on live Telegram servers, active phone numbers, or external LLM API endpoints.
-- **Fast Execution**: Auto-patching `fast_sleep` eliminates real-time waiting while recording exact sleep parameters for assertion.
-- **Methodology**: Category-Partition + Boundary Value Analysis + Pairwise Combinatorial Testing + Real-World Workload Testing.
+- **Opaque-box & Requirement-driven**: Validates requirements across all 4 production tiers and improvement phases.
+- **100% Offline & Deterministic**: Zero reliance on live Telegram MTProto servers, active phone numbers, or external cloud LLM endpoints.
+- **Instantaneous Execution**: Auto-patching `FastSleepRecorder` eliminates real-time waiting while recording exact sleep parameters for assertion.
+- **Native Async Runner**: Zero external test plugin dependencies; runs asynchronously out of the box via native `pytest_pyfunc_call` hook.
+- **Methodology**: Category-Partition + Boundary Value Analysis + Pairwise Combinatorial Testing + Adversarial / Stress Testing.
 
 ---
 
-## Feature Inventory Mapping
-| # | Feature | Source | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
-|---|---------|--------|:------:|:------:|:------:|:------:|
-| F01 | Environment Configuration | R1 | 5 | ✓ | ✓ | ✓ |
-| F02 | API Credentials Validation | R1 | 5 | ✓ | ✓ | ✓ |
-| F03 | Session Management | R1 | 5 | ✓ | - | ✓ |
-| F04 | Anti-Ban FloodWait Handler | R5 | 5 | ✓ | ✓ | ✓ |
-| F05 | BaseLLMProvider & MockLLM | R2 | 5 | - | ✓ | ✓ |
-| F06 | Gemini & OpenAI Providers | R2 | 5 | ✓ | ✓ | ✓ |
-| F07 | Safety Filter Pipeline (777000, bot, blacklist) | R4 | 6 | ✓ | ✓ | ✓ |
-| F08 | Sensitive Keyword Alerting | R4 | 5 | ✓ | ✓ | ✓ |
-| F09 | Humanizer (Typing status, reading delay, jitter) | R4 | 5 | ✓ | ✓ | ✓ |
-| F10 | Saved Messages Commands (/summary, /digest) | R3 | 5 | ✓ | ✓ | ✓ |
-| F11 | Periodic Digest Scheduler | R3 | 5 | ✓ | ✓ | ✓ |
+## Test Inventory & Structure
+
+| Suite File | Focus Area | Tests | Key Capabilities Verified |
+|------------|------------|:-----:|---------------------------|
+| `tests/test_p0_fixes.py` | Phase 1 (P0) Baseline | 7 | CSV `.env` parsing without `SettingsError`, Active Cooldown differentiating bot from human, safe defaults (`AUTO_REPLY_ENABLED=false`, `ALLOWLIST_USERS`, `DRY_RUN`, `SEND_HISTORY_TO_PROVIDER`). |
+| `tests/test_p1_reliability.py` | Phase 2 (P1) Reliability | 8 | `ChatDebouncer` per-chat serialization lock & global concurrency semaphore, LLM timeout & exponential retry backoff, atomic `/mode` switch with rollback on failure, `TelegramMessageSender` <=4096 chunking, atomic `StateRepository` persistence. |
+| `tests/test_p3_security.py` | Phase 3 (Security & Privacy) | 12 | `SensitiveFilter` Luhn algorithm credit card verification, structural OTP regex with Persian/Arabic numerals, private key interception, `AlertService` anti-flood throttling & suppressed alert notice, `DMHandler` media-only ignore, age cutoff (>300s), MTProto message deduplication, `<untrusted_user_input>` prompt injection defense, and PII redaction. |
+| `tests/test_tier1_features.py` | Tier 1: Core Feature Verification | 29 | Settings validation, secret masking, blacklist parsing, FloodWait recovery, filters (System, Bot, Blacklist, Sensitive), LLM factory & mock, Humanizer, Saved Messages commands. |
+| `tests/test_tier2_boundaries.py` | Tier 2: Boundary & Corner Cases | 7 | Empty strings, huge message chunking, system account edge cases, Persian ZWNJ, Arabic Kaf/Yeh normalization, Harakat stripping, summary limits. |
+| `tests/test_tier3_combinations.py` | Tier 3: Combinatorial & Failover | 5 | Blacklist before sensitive keyword (short-circuiting), Bot before sensitive, FloodWait recovery during auto-reply, LLM outage resilience, partial digest resilience. |
+| `tests/test_tier4_scenarios.py` | Tier 4: Real-World Scenarios | 4 | Legitimate DM auto-reply workflow, security phishing attack halt & alert, on-demand `/summary`, background periodic digest. |
+| `tests/test_tier5_adversarial.py` | Tier 5: Adversarial & Stress | 5 | Zero-width unicode attacks, missing persona file fallback, junk in blacklist, concurrent DMs from multiple users, history with empty/media messages. |
+| `tests/test_tier6_enhancements.py` | Tier 6: Behavioral Enhancements | 9 | Advanced normalization, debouncer aggregation, active chat cooldown, pause/resume, dynamic blacklist/mode commands, quoted message context. |
+| **Total** | **Full Coverage Suite** | **86** | **100% Offline, Fast & Deterministic** |
 
 ---
 
-## Test Architecture
-- **Test Runner**: `pytest tests/ -v` (configured via `pytest.ini` with `asyncio_mode = auto`)
-- **Test Directory**: `tests/`
-  - `tests/conftest.py`: Fixtures for `MockTelethonClient`, `MockNewMessageEvent`, `MockActionContext`, `MockAsyncMessageIterator`, `MockLLMProvider`, `fast_sleep`, and sample configurations.
-  - `tests/test_tier1_features.py`: Feature coverage (≥5 tests per feature, total ≥ 50 tests).
-  - `tests/test_tier2_boundaries.py`: Boundary and corner cases (empty strings, 777000, case-insensitivity, extreme delays, unicode Persian keywords).
-  - `tests/test_tier3_combinations.py`: Cross-feature interactions (blacklist vs security keyword, FloodWait during reply, LLM outage during command).
-  - `tests/test_tier4_scenarios.py`: Full end-to-end user journeys (incoming private DM, Saved Messages /summary, Security alert to 'me').
+## Running Tests
 
----
+### 1. Run Complete Test Suite
+```bash
+pytest tests/ -v
+```
 
-## Coverage Thresholds
-- Tier 1: ≥5 per feature across all core features (Target: 45+ tests)
-- Tier 2: ≥5 boundary & corner case tests (Target: 10+ tests)
-- Tier 3: Pairwise & cross-feature combination tests (Target: 6+ tests)
-- Tier 4: Real-world end-to-end scenario workflows (Target: 4+ tests)
-- **Minimum Target**: ≥ 65 tests passing with 100% success rate and zero network calls.
+### 2. Run with Code Coverage Report
+```bash
+pytest --cov=. --cov-report=term-missing --cov-report=html
+```
+
+### 3. Run Specific Test Suite
+```bash
+pytest tests/test_p0_fixes.py -v
+pytest tests/test_p1_reliability.py -v
+pytest tests/test_p3_security.py -v
+```
+
+### 4. Code Formatting and Linting (Ruff)
+```bash
+ruff check .
+ruff format --check .
+```

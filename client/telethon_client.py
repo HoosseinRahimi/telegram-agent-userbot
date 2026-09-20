@@ -8,9 +8,11 @@ and decorated safe MTProto operations with anti-ban protection.
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncIterator, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 from config.settings import Settings
+
 from .anti_ban import with_floodwait
 
 logger = logging.getLogger(__name__)
@@ -22,7 +24,7 @@ class UserbotClient:
     session security, and anti-ban safe message interactions.
     """
 
-    def __init__(self, settings: Settings, raw_client: Optional[Any] = None) -> None:
+    def __init__(self, settings: Settings, raw_client: Any | None = None) -> None:
         self.settings = settings
         self._raw_client = raw_client
         self._is_started = False
@@ -34,7 +36,7 @@ class UserbotClient:
             from telethon import TelegramClient
             from telethon.sessions import StringSession
 
-            session: Union[str, StringSession]
+            session: str | StringSession
             if self.settings.telegram_session_string:
                 session = StringSession(self.settings.telegram_session_string)
             else:
@@ -89,7 +91,7 @@ class UserbotClient:
         self,
         entity: Any,
         message: str,
-        reply_to: Optional[Any] = None,
+        reply_to: Any | None = None,
         **kwargs: Any,
     ) -> Any:
         """
@@ -106,7 +108,7 @@ class UserbotClient:
     async def send_read_acknowledge_safe(
         self,
         entity: Any,
-        max_id: Optional[int] = None,
+        max_id: int | None = None,
         **kwargs: Any,
     ) -> Any:
         """

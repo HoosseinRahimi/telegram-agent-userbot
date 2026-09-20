@@ -7,9 +7,9 @@ Chains security, bot, blacklist, and sensitive content filters with short-circui
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from config.settings import Settings
+
 from .base import BaseFilter, FilterContext, FilterResult
 from .blacklist_filter import BlacklistFilter
 from .bot_filter import BotFilter
@@ -24,8 +24,8 @@ class FilterPipeline:
     Executes an ordered sequence of filters with short-circuit evaluation.
     """
 
-    def __init__(self, filters: Optional[List[BaseFilter]] = None) -> None:
-        self.filters: List[BaseFilter] = filters or []
+    def __init__(self, filters: list[BaseFilter] | None = None) -> None:
+        self.filters: list[BaseFilter] = filters or []
 
     def add_filter(self, filter_instance: BaseFilter) -> None:
         """Appends a filter to the pipeline."""

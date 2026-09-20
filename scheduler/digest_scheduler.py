@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
 
 from config.settings import Settings
 from services.digest_service import DigestService
@@ -26,12 +25,12 @@ class DigestScheduler:
         self,
         digest_service: DigestService,
         settings: Settings,
-        sleep_func: Optional[callable] = None,
+        sleep_func: callable | None = None,
     ) -> None:
         self.service = digest_service
         self.settings = settings
         self.sleep = sleep_func or asyncio.sleep
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
         self._running: bool = False
 
     @property

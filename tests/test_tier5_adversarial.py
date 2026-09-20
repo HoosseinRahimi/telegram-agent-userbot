@@ -8,7 +8,6 @@ missing config files, and edge-case state transitions.
 from __future__ import annotations
 
 import asyncio
-import pytest
 
 from client.telethon_client import UserbotClient
 from filters.base import FilterContext
@@ -20,7 +19,7 @@ from services.alert_service import AlertService
 from services.auto_reply_service import AutoReplyService, load_persona_prompt
 from services.digest_service import DigestService
 from services.humanizer import HumanizerService
-from tests.conftest import MockMessage, MockTelethonClient, MockUser
+from tests.conftest import MockMessage, MockTelethonClient
 
 
 def test_adversarial_zero_width_unicode_in_sensitive_filter() -> None:

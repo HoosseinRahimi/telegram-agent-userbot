@@ -9,10 +9,16 @@ from __future__ import annotations
 import functools
 import json
 import re
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 # Default sensitive keywords (English and Persian) for security monitoring
 DEFAULT_SENSITIVE_KEYWORDS: list[str] = [
@@ -46,7 +52,7 @@ DEFAULT_SENSITIVE_KEYWORDS: list[str] = [
 
 def _parse_list_or_json(
     raw: Any,
-    item_converter: Optional[callable] = None,
+    item_converter: callable | None = None,
 ) -> list[Any]:
     """
     Parses a string or iterable into a typed list.
@@ -85,7 +91,7 @@ def _parse_list_or_json(
     return result
 
 
-def _normalize_entity_identifier(item: Any) -> Union[int, str]:
+def _normalize_entity_identifier(item: Any) -> int | str:
     """
     Converts a string or int into an int (if numeric) or string (stripped of '@').
     """
@@ -99,10 +105,28 @@ def _normalize_entity_identifier(item: Any) -> Union[int, str]:
     return text
 
 
-def _normalize_keyword(item: Any) -> Optional[str]:
+def _normalize_keyword(item: Any) -> str | None:
     """Converts a keyword item into a lowercased, stripped string."""
     text = str(item).strip().lower()
     return text if text else None
+
+
+class CustomEnvSettingsSource(EnvSettingsSource):
+    """Custom Env source that tolerates non-JSON complex values for custom parsing."""
+    def decode_complex_value(self, field_name: str, field: Any, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            return value
+
+
+class CustomDotEnvSettingsSource(DotEnvSettingsSource):
+    """Custom DotEnv source that tolerates non-JSON complex values for custom parsing."""
+    def decode_complex_value(self, field_name: str, field: Any, value: Any) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            return value
 
 
 class Settings(BaseSettings):
@@ -118,6 +142,34 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        custom_env = CustomEnvSettingsSource(
+            settings_cls,
+            case_sensitive=getattr(env_settings, "case_sensitive", False),
+            env_prefix=getattr(env_settings, "env_prefix", ""),
+        )
+        custom_dotenv = CustomDotEnvSettingsSource(
+            settings_cls,
+            env_file=getattr(dotenv_settings, "env_file", None),
+            env_file_encoding=getattr(dotenv_settings, "env_file_encoding", None),
+            case_sensitive=getattr(dotenv_settings, "case_sensitive", False),
+            env_prefix=getattr(dotenv_settings, "env_prefix", ""),
+        )
+        return (
+            init_settings,
+            custom_env,
+            custom_dotenv,
+            file_secret_settings,
+        )
+
     # Telegram MTProto Credentials
     telegram_api_id: int = Field(
         ...,
@@ -131,7 +183,7 @@ class Settings(BaseSettings):
         default="userbot_session",
         description="SQLite session file name",
     )
-    telegram_session_string: Optional[str] = Field(
+    telegram_session_string: str | None = Field(
         default=None,
         description="Optional in-memory StringSession string",
     )
@@ -141,7 +193,7 @@ class Settings(BaseSettings):
         default="gemini",
         description="Active LLM provider: 'gemini', 'openai', or 'mock'",
     )
-    gemini_api_key: Optional[str] = Field(
+    gemini_api_key: str | None = Field(
         default=None,
         description="Google Gemini API key",
     )
@@ -149,7 +201,7 @@ class Settings(BaseSettings):
         default="gemini-2.5-flash",
         description="Google Gemini model identifier",
     )
-    openai_api_key: Optional[str] = Field(
+    openai_api_key: str | None = Field(
         default=None,
         description="OpenAI API key or compatible endpoint token",
     )
@@ -157,13 +209,31 @@ class Settings(BaseSettings):
         default="gpt-4o-mini",
         description="OpenAI model identifier",
     )
-    openai_base_url: Optional[str] = Field(
+    openai_base_url: str | None = Field(
         default=None,
         description="Optional base URL for OpenAI-compatible inference servers",
     )
 
+    # Auto-Reply Controls & Safe Defaults
+    auto_reply_enabled: bool = Field(
+        default=False,
+        description="Whether auto-reply to incoming DMs is enabled by default (safe default is False)",
+    )
+    allowlist_users: list[int | str] = Field(
+        default_factory=list,
+        description="Optional allowlist of user IDs or usernames permitted for auto-reply. If non-empty, only these users receive auto-replies.",
+    )
+    dry_run: bool = Field(
+        default=False,
+        description="If True, simulates responses and logs them without sending to Telegram",
+    )
+    send_history_to_provider: bool = Field(
+        default=True,
+        description="Whether to include recent private chat history in the prompt sent to LLM provider",
+    )
+
     # Blacklist & Safety Filters
-    blacklist_users: list[Union[int, str]] = Field(
+    blacklist_users: list[int | str] = Field(
         default_factory=list,
         description="List of user IDs or usernames to completely ignore",
     )
@@ -171,9 +241,17 @@ class Settings(BaseSettings):
         default_factory=lambda: list(DEFAULT_SENSITIVE_KEYWORDS),
         description="Keywords that trigger emergency security alert to Saved Messages",
     )
+    alert_on_blocked_sensitive: bool = Field(
+        default=True,
+        description="Whether to send security alerts to Saved Messages when sensitive content is blocked",
+    )
+    redact_pii_before_llm: bool = Field(
+        default=True,
+        description="Whether to redact PII (credit cards, OTPs, phone numbers) before sending prompts to LLM",
+    )
 
     # Channel Monitoring & Digest
-    digest_channels: list[Union[int, str]] = Field(
+    digest_channels: list[int | str] = Field(
         default_factory=list,
         description="Channels to monitor for analytical summaries",
     )
@@ -226,7 +304,12 @@ class Settings(BaseSettings):
 
     @field_validator("blacklist_users", mode="before")
     @classmethod
-    def validate_blacklist_users(cls, v: Any) -> list[Union[int, str]]:
+    def validate_blacklist_users(cls, v: Any) -> list[int | str]:
+        return _parse_list_or_json(v, item_converter=_normalize_entity_identifier)
+
+    @field_validator("allowlist_users", mode="before")
+    @classmethod
+    def validate_allowlist_users(cls, v: Any) -> list[int | str]:
         return _parse_list_or_json(v, item_converter=_normalize_entity_identifier)
 
     @field_validator("sensitive_keywords", mode="before")
@@ -241,7 +324,7 @@ class Settings(BaseSettings):
 
     @field_validator("digest_channels", mode="before")
     @classmethod
-    def validate_digest_channels(cls, v: Any) -> list[Union[int, str]]:
+    def validate_digest_channels(cls, v: Any) -> list[int | str]:
         return _parse_list_or_json(v, item_converter=_normalize_entity_identifier)
 
     @field_validator("digest_interval_minutes", mode="before")
@@ -284,7 +367,7 @@ class Settings(BaseSettings):
         return self.__repr__()
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def get_settings() -> Settings:
     """
     Returns a cached singleton instance of Settings.

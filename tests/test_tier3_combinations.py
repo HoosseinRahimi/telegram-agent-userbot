@@ -11,8 +11,6 @@ Tests interactions between filters, error resilience, and cascading service beha
 
 from __future__ import annotations
 
-import pytest
-
 from client.telethon_client import UserbotClient
 from filters.base import FilterContext
 from filters.blacklist_filter import BlacklistFilter
@@ -26,7 +24,7 @@ from services.alert_service import AlertService
 from services.auto_reply_service import AutoReplyService
 from services.digest_service import DigestService
 from services.humanizer import HumanizerService
-from tests.conftest import MockFloodWaitError, MockMessage, MockTelethonClient
+from tests.conftest import MockMessage, MockTelethonClient
 
 
 async def test_combination_blacklist_before_sensitive_keyword(

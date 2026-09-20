@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import random
-from typing import Any, Callable, Coroutine, Optional
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from client.anti_ban import calculate_reading_delay, calculate_typing_duration
 from client.telethon_client import UserbotClient
@@ -28,7 +28,7 @@ class HumanizerService:
     def __init__(
         self,
         userbot_client: UserbotClient,
-        sleep_func: Optional[Callable[[float], Coroutine[Any, Any, None]]] = None,
+        sleep_func: Callable[[float], Coroutine[Any, Any, None]] | None = None,
         chars_per_second: float = 25.0,
     ) -> None:
         self.client = userbot_client

@@ -12,25 +12,23 @@ Provides:
 from __future__ import annotations
 
 import asyncio
+import inspect
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-import inspect
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
+from typing import Any
 
 import pytest
 
 from config.settings import Settings
-from filters.base import FilterContext
-from llm.base import BaseLLMProvider, LLMMessage, LLMRequest, LLMResponse
 from llm.mock_provider import MockLLMProvider
-
 
 # ============================================================================
 # Native Async Test Runner Hook
 # ============================================================================
 
 @pytest.hookimpl(tryfirst=True)
-def pytest_pyfunc_call(pyfuncitem: Any) -> Optional[bool]:
+def pytest_pyfunc_call(pyfuncitem: Any) -> bool | None:
     """
     Executes async coroutine test functions using asyncio.run() natively,
     avoiding the requirement for external pytest-asyncio plugins.
@@ -58,7 +56,7 @@ class MockFloodWaitError(Exception):
 class MockUser:
     id: int
     first_name: str = "TestUser"
-    username: Optional[str] = None
+    username: str | None = None
     bot: bool = False
 
 
@@ -70,7 +68,7 @@ class MockMessage:
     chat_id: int
     date: datetime = field(default_factory=datetime.now)
     out: bool = False
-    sender: Optional[MockUser] = None
+    sender: MockUser | None = None
     is_private: bool = True
 
     @property
@@ -81,7 +79,7 @@ class MockMessage:
     def raw_text(self) -> str:
         return self.text
 
-    async def get_sender(self) -> Optional[MockUser]:
+    async def get_sender(self) -> MockUser | None:
         return self.sender or MockUser(id=self.sender_id, bot=False)
 
     async def reply(self, response_text: str) -> MockMessage:
@@ -120,18 +118,41 @@ class MockTelethonClient:
     """
 
     def __init__(self) -> None:
-        self.sent_messages: List[Dict[str, Any]] = []
-        self.chat_history: Dict[Any, List[MockMessage]] = {}
-        self.event_handlers: List[tuple[Callable[..., Any], Any]] = []
-        self.read_acknowledges: List[Dict[str, Any]] = []
-        self.actions_triggered: List[tuple[Any, str]] = []
+        self.sent_messages: list[dict[str, Any]] = []
+        self.chat_history: dict[Any, list[MockMessage]] = {}
+        self.event_handlers: list[tuple[Callable[..., Any], Any]] = []
+        self.read_acknowledges: list[dict[str, Any]] = []
+        self.actions_triggered: list[tuple[Any, str]] = []
         self.is_connected = True
         self.next_message_id = 100
-        self.floodwait_trigger: Optional[int] = None  # if set, raises MockFloodWaitError N times
+        self.floodwait_trigger: int | None = None  # if set, raises MockFloodWaitError N times
         self._floodwait_count = 0
 
     def add_event_handler(self, callback: Callable[..., Any], event_filter: Any = None) -> None:
         self.event_handlers.append((callback, event_filter))
+
+    async def dispatch_event(self, event: Any) -> None:
+        for handler, event_filter in self.event_handlers:
+            match = True
+            if event_filter is not None:
+                if hasattr(event_filter, "filter") and callable(event_filter.filter):
+                    try:
+                        res = event_filter.filter(event)
+                        if inspect.isawaitable(res):
+                            res = await res
+                        match = bool(res)
+                    except Exception:
+                        match = True
+                elif callable(event_filter):
+                    try:
+                        res = event_filter(event)
+                        if inspect.isawaitable(res):
+                            res = await res
+                        match = bool(res)
+                    except Exception:
+                        match = True
+            if match:
+                await handler(event)
 
     async def get_me(self) -> MockUser:
         return MockUser(id=999999, first_name="Hossein", username="hossein_user")
@@ -144,7 +165,7 @@ class MockTelethonClient:
         self,
         entity: Any,
         message: str,
-        reply_to: Optional[Any] = None,
+        reply_to: Any | None = None,
         **kwargs: Any,
     ) -> MockMessage:
         if self.floodwait_trigger and self._floodwait_count < self.floodwait_trigger:
@@ -168,7 +189,7 @@ class MockTelethonClient:
         })
         return msg_obj
 
-    async def send_read_acknowledge(self, entity: Any, max_id: Optional[int] = None, **kwargs: Any) -> bool:
+    async def send_read_acknowledge(self, entity: Any, max_id: int | None = None, **kwargs: Any) -> bool:
         self.read_acknowledges.append({"entity": entity, "max_id": max_id})
         return True
 
@@ -177,7 +198,7 @@ class MockTelethonClient:
         for m in msgs:
             yield m
 
-    async def get_messages(self, entity: Any, limit: int = 50, **kwargs: Any) -> List[MockMessage]:
+    async def get_messages(self, entity: Any, limit: int = 50, **kwargs: Any) -> list[MockMessage]:
         return self.chat_history.get(entity, [])[:limit]
 
 
@@ -188,7 +209,7 @@ class MockTelethonClient:
 class FastSleepRecorder:
     """Fast in-memory mock for asyncio.sleep that tracks elapsed sleep calls without waiting."""
     def __init__(self) -> None:
-        self.calls: List[float] = []
+        self.calls: list[float] = []
         self.total_seconds: float = 0.0
 
     async def __call__(self, seconds: float) -> None:
