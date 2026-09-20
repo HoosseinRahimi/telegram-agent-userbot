@@ -2,7 +2,7 @@
 Direct Message (DM) Event Handler.
 
 Listens for incoming private messages in Telethon and delegates processing
-to the AutoReplyService.
+to the ChatDebouncer and AutoReplyService.
 """
 
 from __future__ import annotations
@@ -12,14 +12,27 @@ from typing import Any, Optional
 
 from filters.base import FilterContext
 from services.auto_reply_service import AutoReplyService
+from services.chat_debouncer import ChatDebouncer
 
 logger = logging.getLogger(__name__)
 
 
-def register_dm_handler(client: Any, auto_reply_service: AutoReplyService) -> None:
+def register_dm_handler(
+    client: Any,
+    auto_reply_service: AutoReplyService,
+    debouncer: Optional[ChatDebouncer] = None,
+) -> ChatDebouncer:
     """
     Registers a Telethon NewMessage event handler for private chats.
+    Wires incoming messages through the ChatDebouncer.
+    Returns the active ChatDebouncer instance.
     """
+    if debouncer is None:
+        debouncer = ChatDebouncer(
+            dispatch_callback=auto_reply_service.handle_incoming_private_message,
+            debounce_delay=2.5,
+        )
+
     try:
         from telethon import events
         event_filter = events.NewMessage(incoming=True, func=lambda e: getattr(e, "is_private", False))
@@ -54,6 +67,17 @@ def register_dm_handler(client: Any, auto_reply_service: AutoReplyService) -> No
         chat_id = getattr(event, "chat_id", sender_id)
         is_self = getattr(event, "out", False)
 
+        # Retrieve quoted / reply-to message text if available
+        quoted_text: Optional[str] = None
+        if getattr(event, "reply_to_msg_id", None):
+            try:
+                if hasattr(event, "get_reply_message"):
+                    reply_msg = await event.get_reply_message()
+                    if reply_msg:
+                        quoted_text = getattr(reply_msg, "text", "") or getattr(reply_msg, "message", "") or ""
+            except Exception as exc:
+                logger.debug(f"[DMHandler] Could not fetch quoted message: {exc}")
+
         context = FilterContext(
             sender_id=sender_id,
             sender_username=sender_username,
@@ -62,16 +86,16 @@ def register_dm_handler(client: Any, auto_reply_service: AutoReplyService) -> No
             text=text,
             chat_id=chat_id,
             raw_event=event,
+            quoted_text=quoted_text,
         )
 
         message_id = getattr(event, "id", None)
-        await auto_reply_service.handle_incoming_private_message(
-            context=context,
-            message_id=message_id,
-        )
+        await debouncer.enqueue(context=context, message_id=message_id)
 
     if event_filter is not None and hasattr(client, "add_event_handler"):
         client.add_event_handler(_on_private_message, event_filter)
-        logger.info("[DMHandler] Successfully registered DM event listener.")
+        logger.info("[DMHandler] Successfully registered DM event listener with ChatDebouncer.")
     elif hasattr(client, "add_event_handler"):
         client.add_event_handler(_on_private_message)
+
+    return debouncer

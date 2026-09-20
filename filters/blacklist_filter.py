@@ -50,3 +50,35 @@ class BlacklistFilter(BaseFilter):
                 )
 
         return FilterResult.allow()
+
+    def add_entry(self, item: Union[int, str]) -> str:
+        """Dynamically adds an ID or username to the blacklist."""
+        s_item = str(item).strip()
+        if not s_item:
+            return ""
+        if s_item.lstrip("-").isdigit():
+            self.blacklisted_ids.add(int(s_item))
+            self.blacklisted_ids.add(s_item)
+            return s_item
+        else:
+            uname = s_item.lower().lstrip("@")
+            self.blacklisted_usernames.add(uname)
+            return f"@{uname}"
+
+    def remove_entry(self, item: Union[int, str]) -> bool:
+        """Dynamically removes an ID or username from the blacklist."""
+        s_item = str(item).strip()
+        removed = False
+        if s_item.lstrip("-").isdigit():
+            val = int(s_item)
+            if val in self.blacklisted_ids or s_item in self.blacklisted_ids:
+                self.blacklisted_ids.discard(val)
+                self.blacklisted_ids.discard(s_item)
+                removed = True
+        else:
+            uname = s_item.lower().lstrip("@")
+            if uname in self.blacklisted_usernames:
+                self.blacklisted_usernames.discard(uname)
+                removed = True
+        return removed
+

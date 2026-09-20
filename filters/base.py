@@ -46,6 +46,7 @@ class FilterContext:
     text: str = ""
     chat_id: Union[int, str] = 0
     raw_event: Optional[Any] = None
+    quoted_text: Optional[str] = None
 
 
 class BaseFilter(ABC):

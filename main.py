@@ -72,8 +72,14 @@ async def async_main() -> None:
 
     # 4. Wire Telethon event handlers
     raw_telethon = userbot_client.client
-    register_dm_handler(raw_telethon, auto_reply_service)
-    register_saved_messages_handler(raw_telethon, digest_service, settings)
+    debouncer = register_dm_handler(raw_telethon, auto_reply_service)
+    register_saved_messages_handler(
+        raw_telethon,
+        digest_service,
+        settings,
+        auto_reply_service=auto_reply_service,
+        filter_pipeline=filter_pipeline,
+    )
 
     # 5. Initialize background scheduler
     scheduler = DigestScheduler(digest_service=digest_service, settings=settings)
@@ -90,6 +96,7 @@ async def async_main() -> None:
     except (asyncio.CancelledError, KeyboardInterrupt):
         logger.info("Received termination signal. Shutting down...")
     finally:
+        await debouncer.stop()
         await scheduler.stop()
         await userbot_client.disconnect()
         logger.info("🔴 Userbot stopped gracefully.")

@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  telegram-userbot:
+    build: .
+    container_name: telegram_ai_agent_userbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persist SQLite session file and persona prompt across container restarts
+      - ./userbot_session.session:/app/userbot_session.session
+      - ./persona_prompt.txt:/app/persona_prompt.txt
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

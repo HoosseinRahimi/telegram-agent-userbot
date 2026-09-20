@@ -7,6 +7,7 @@ Translates prompts, system instructions, and multi-turn messages into Gemini API
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, List, Optional
 
@@ -104,9 +105,10 @@ class GeminiProvider(BaseLLMProvider):
                 text = response.text or ""
                 return LLMResponse(content=text, model=self.model_name, raw_response=response)
 
-            # Modern synchronous fallback executed in executor or legacy API
+            # Modern synchronous fallback executed in thread pool to prevent blocking event loop
             elif hasattr(client, "models"):
-                response = client.models.generate_content(
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
                     model=self.model_name,
                     contents=contents,
                 )
