@@ -1,5 +1,13 @@
 # 🤖 تلگرام یوزربات هوشمند و سیستم ایجنت (Telegram AI Agent Userbot)
 
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Telethon](https://img.shields.io/badge/Telethon-MTProto-blueviolet.svg)](https://github.com/LonamiWebs/Telethon)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](Dockerfile)
+[![Tests: 59 Passed](https://img.shields.io/badge/Tests-59%20Passed-brightgreen.svg)](tests/)
+
+[English](README_EN.md) | [فارسی](README.md)
+
 یک یوزربات شخصی تلگرام (MTProto Userbot) کاملاً ماژولار، استاندارد، ضد بن و ایمن، پیاده‌سازی‌شده با **Telethon** و متصل به موتور مدل‌های زبانی هوش مصنوعی (**Google Gemini**، **OpenAI** و **Ollama / Local LLMs**).
 
 این سیستم هم‌زمان دو کارکرد حیاتی را پوشش می‌دهد:
