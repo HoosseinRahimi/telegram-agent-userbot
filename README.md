@@ -7,7 +7,6 @@
 [![CI](https://github.com/HoosseinRahimi/telegram-agent-userbot/actions/workflows/ci.yml/badge.svg)](https://github.com/HoosseinRahimi/telegram-agent-userbot/actions/workflows/ci.yml)
 [![Telethon](https://img.shields.io/badge/Telethon-MTProto-blueviolet.svg)](https://github.com/LonamiWebs/Telethon)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](Dockerfile)
-[![Tests: 86 Passed](https://img.shields.io/badge/Tests-86%20Passed-brightgreen.svg)](tests/)
 
 [English](README_EN.md) | [فارسی](README.md)
 
