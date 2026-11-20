@@ -99,13 +99,15 @@ class OpenAIProvider(BaseLLMProvider):
 
         for attempt in range(self.max_retries):
             try:
-                async with asyncio.timeout(self.timeout_seconds):
-                    response = await client.chat.completions.create(
+                response = await asyncio.wait_for(
+                    client.chat.completions.create(
                         model=self.model_name,
                         messages=messages,
                         temperature=request.temperature,
                         max_tokens=request.max_tokens,
-                    )
+                    ),
+                    timeout=self.timeout_seconds,
+                )
 
                 choice = response.choices[0]
                 content = choice.message.content or ""

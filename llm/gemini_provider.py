@@ -104,38 +104,40 @@ class GeminiProvider(BaseLLMProvider):
 
         last_exc: Exception | None = None
 
+        async def _invoke() -> tuple[Any, str]:
+            # Modern google-genai Client API: client.aio.models.generate_content
+            if hasattr(client, "aio") and hasattr(client.aio, "models"):
+                response = await client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                    config=config if config else None,
+                )
+                return response, response.text or ""
+
+            # Modern synchronous fallback executed in thread pool to prevent blocking event loop
+            if hasattr(client, "models"):
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=self.model_name,
+                    contents=contents,
+                    config=config if config else None,
+                )
+                return response, response.text or ""
+
+            # Legacy GenerativeModel interface
+            model = client.GenerativeModel(
+                self.model_name,
+                system_instruction=system_instruction,
+            )
+            response = await model.generate_content_async(contents)
+            return response, response.text or ""
+
         for attempt in range(self.max_retries):
             try:
-                async with asyncio.timeout(self.timeout_seconds):
-                    # Modern google-genai Client API: client.aio.models.generate_content
-                    if hasattr(client, "aio") and hasattr(client.aio, "models"):
-                        response = await client.aio.models.generate_content(
-                            model=self.model_name,
-                            contents=contents,
-                            config=config if config else None,
-                        )
-                        text = response.text or ""
-                        return LLMResponse(content=text, model=self.model_name, raw_response=response)
-
-                    # Modern synchronous fallback executed in thread pool to prevent blocking event loop
-                    elif hasattr(client, "models"):
-                        response = await asyncio.to_thread(
-                            client.models.generate_content,
-                            model=self.model_name,
-                            contents=contents,
-                            config=config if config else None,
-                        )
-                        text = response.text or ""
-                        return LLMResponse(content=text, model=self.model_name, raw_response=response)
-                    else:
-                        # Legacy GenerativeModel interface
-                        model = client.GenerativeModel(
-                            self.model_name,
-                            system_instruction=system_instruction,
-                        )
-                        response = await model.generate_content_async(contents)
-                        text = response.text or ""
-                        return LLMResponse(content=text, model=self.model_name, raw_response=response)
+                response, text = await asyncio.wait_for(
+                    _invoke(), timeout=self.timeout_seconds
+                )
+                return LLMResponse(content=text, model=self.model_name, raw_response=response)
 
             except (TimeoutError, asyncio.TimeoutError) as exc:
                 last_exc = exc
