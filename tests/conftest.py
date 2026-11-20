@@ -132,27 +132,17 @@ class MockTelethonClient:
         self.event_handlers.append((callback, event_filter))
 
     async def dispatch_event(self, event: Any) -> None:
-        for handler, event_filter in self.event_handlers:
-            match = True
-            if event_filter is not None:
-                if hasattr(event_filter, "filter") and callable(event_filter.filter):
-                    try:
-                        res = event_filter.filter(event)
-                        if inspect.isawaitable(res):
-                            res = await res
-                        match = bool(res)
-                    except Exception:
-                        match = True
-                elif callable(event_filter):
-                    try:
-                        res = event_filter(event)
-                        if inspect.isawaitable(res):
-                            res = await res
-                        match = bool(res)
-                    except Exception:
-                        match = True
-            if match:
-                await handler(event)
+        """
+        Delivers an event to every registered handler.
+
+        Telethon's event filters are deliberately not evaluated here: they
+        resolve entities such as ``chats="me"`` against a live client, which
+        this mock does not have, so the verdict would depend on the Telethon
+        version rather than on the code under test. A test states which handler
+        it means by building the event it wants handled.
+        """
+        for handler, _event_filter in self.event_handlers:
+            await handler(event)
 
     async def get_me(self) -> MockUser:
         return MockUser(id=999999, first_name="Hossein", username="hossein_user")
