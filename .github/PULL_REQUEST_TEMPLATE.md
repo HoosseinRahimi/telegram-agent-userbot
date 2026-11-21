@@ -1,19 +1,24 @@
-## Description
-Provide a brief description of the changes introduced by this pull request.
+## What changed
 
-## Related Issue(s)
-Fixes #(issue number)
+Describe the change in one short paragraph.
 
-## Type of Change
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Refactoring / Performance improvement
+## Why
+
+Link the issue or explain the problem this solves.
+
+## How it was tested
+
+- [ ] `ruff` / lint passes locally
+- [ ] Typecheck passes locally
+- [ ] Tests pass locally
+- [ ] CI is green
+
+## Risks and limitations
+
+Call out breaking changes, security implications, or anything intentionally out of scope.
 
 ## Checklist
-- [ ] My code follows the style guidelines of this project (Ruff passed).
-- [ ] I have added/updated tests that prove my fix is effective or that my feature works.
-- [ ] All new and existing tests passed offline (100% test success rate).
-- [ ] I have updated the documentation accordingly.
-- [ ] No secrets or sensitive data are committed.
+
+- [ ] No secrets, cookies, tokens or personal data in code, logs or tests
+- [ ] Docs updated where behaviour changed
+- [ ] Commit titles use `fix:`, `feat:`, `docs:`, `ci:` or `deps:`
