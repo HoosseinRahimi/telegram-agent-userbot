@@ -1,28 +1,31 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: '[BUG] '
+about: Report a reproducible defect
+title: "fix: "
 labels: bug
-assignees: ''
+assignees: ""
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Summary
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Configure settings '...'
-2. Run userbot with command '...'
-3. Send message '...'
-4. See error
+A clear description of what went wrong.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Steps to reproduce
 
-**Environment (please complete the following information):**
-- OS: [e.g. Linux, Windows, macOS, Docker]
-- Python Version: [e.g. 3.10.12, 3.11.8]
-- LLM Provider: [e.g. Gemini, OpenAI, Ollama]
+1.
+2.
+3.
 
-**Additional context**
-Add any other context, sanitized logs (WITHOUT API keys or phone numbers) about the problem here.
+## Expected vs actual
+
+- **Expected:**
+- **Actual:**
+
+## Environment
+
+- OS / Python / Node version:
+- Commit or release:
+
+## Logs or screenshots
+
+Include the smallest reproducible log excerpt. Redact secrets and personal data.
